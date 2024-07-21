@@ -1,0 +1,312 @@
+﻿@page "/slotgame"
+@using MauiBlazorDialogSample;
+@using Microsoft.Maui.Controls;
+@using slotApp_txt.Enums;
+@using Microsoft.Extensions.FileProviders;
+@using System.IO;
+@using System.Threading.Tasks;
+@inject NavigationManager NavManager
+
+<div class="fixed">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <img src="../Images/5-reel-slot.png">
+    <div class="position-absolute top-0 w-100" style="height: 100vh;">
+        <p id="remainingSpinsLabel" class="remainingSpinsLabel">@count</p>
+        <div class="d-flex justify-content-center align-items-center w-75 h-100 Layer">
+            <div class="reel">
+                <div class="slot @loop">
+                    @foreach (var symbol in Reel_a)
+                    {
+                        <img src="@symbol">
+                    }
+                </div>
+            </div>
+            <div class="reel">
+                <div class="slot @loop">
+                    @foreach (var symbol in Reel_b)
+                    {
+                        <img src="@symbol">
+                    }
+                </div>
+            </div>
+            <div class="reel">
+                <div class="slot @loop">
+                    @foreach (var symbol in Reel_c)
+                    {
+                        <img src="@symbol">
+                    }
+                </div>
+            </div>
+            <div class="reel">
+                <div class="slot @loop">
+                    @foreach (var symbol in Reel_d)
+                    {
+                        <img src="@symbol">
+                    }
+                </div>
+            </div>
+            <div class="reel">
+                <div class="slot @loop">
+                    @foreach (var symbol in Reel_e)
+                    {
+                        <img src="@symbol">
+                    }
+                </div>
+            </div>
+        </div>
+        <button class="spin-btn text-white position-absolute" @onclick="Spin">SPIN !</button>
+    </div>
+</div>
+@code {
+    private string count { get; set; } = "";
+    private string loop { get; set; } = "";
+    private string repeat { get; set; } = "";
+    Random random = new Random();
+    DialogService dialogService = new DialogService();
+    private int spincount = 10;
+    private int currentIndex = 0;
+    private bool isSpinning = false;
+    private bool isClicked { get; set; } = false;
+    private string[] Reel_a = new string[11];
+    private string[] Reel_b = new string[11];
+    private string[] Reel_c = new string[11];
+    private string[] Reel_d = new string[11];
+    private string[] Reel_e = new string[11];
+    private string[] Result = new string[5];
+    private List<string> resultList = new List<string>();
+    private string[] symbols = new string[] {"../Images/num0.png","../Images/num1.png","../Images/num2.png",
+    "../Images/num3.png","../Images/num4.png","../Images/num5.png","../Images/num6.png","../Images/num7.png",
+    "../Images/num8.png","../Images/num9.png"};
+    protected override void OnInitialized()
+    {
+        for (int i = 0; i < 11; i++)
+        {
+            Reel_a[i] = symbols[random.Next(symbols.Length)];
+            Reel_b[i] = symbols[random.Next(symbols.Length)];
+            Reel_c[i] = symbols[random.Next(symbols.Length)];
+            Reel_d[i] = symbols[random.Next(symbols.Length)];
+            Reel_e[i] = symbols[random.Next(symbols.Length)];
+        }
+        currentIndex = 0;
+        ReadFile();
+    }
+    private async Task ReadFile()
+    {
+        // try
+        // {
+        using var stream = await FileSystem.OpenAppPackageFileAsync("wwwroot/results.txt");
+        using var reader = new StreamReader(stream);
+        var contents = await reader.ReadToEndAsync();
+        string[] lines = contents.Split('\n');
+        for (int i = 0; i < lines.Length; i++)
+        {
+            string line = lines[i];
+            string[] newImagePaths = line.Split(',');
+            if (newImagePaths.Length == 5)
+            {
+                for (int j = 0; j < Result.Length; j++)
+                {
+                    Result[j] = symbols[Convert.ToInt32(newImagePaths[j])];
+                }
+                resultList.Add(string.Join(",", Result));
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        // }
+        // catch (Exception ex)
+        // {
+        //     Console.WriteLine($"Error reading file: {ex.Message}");
+        // }
+    }
+
+    private async Task Spin()
+    {
+        if (isSpinning)
+        {
+            return;
+        }
+        isSpinning = true;
+        loop = "animation";
+        if (spincount > 0)
+        {
+            // Randomize the reels initially
+            for (int i = 0; i < 11; i++)
+            {
+                Reel_a[i] = symbols[random.Next(symbols.Length)];
+                Reel_b[i] = symbols[random.Next(symbols.Length)];
+                Reel_c[i] = symbols[random.Next(symbols.Length)];
+                Reel_d[i] = symbols[random.Next(symbols.Length)];
+                Reel_e[i] = symbols[random.Next(symbols.Length)];
+            }
+
+            // Ensure the UI updates for the animation
+            StateHasChanged();
+            await Task.Delay(4000); // Short delay to let animation play
+
+            if (currentIndex < resultList.Count)
+            {
+                string[] currentResult = resultList[currentIndex].Split(',');
+                await UpdateImage(Reel_a, 1, currentResult[0]);
+                await UpdateImage(Reel_b, 1, currentResult[1]);
+                await UpdateImage(Reel_c, 1, currentResult[2]);
+                await UpdateImage(Reel_d, 1, currentResult[3]);
+                await UpdateImage(Reel_e, 1, currentResult[4]);
+
+                // Debug statements to verify updates
+                Console.WriteLine($"Updated Reels: {string.Join(",", Reel_a)}");
+                Console.WriteLine($"Updated Reels: {string.Join(",", Reel_b)}");
+                Console.WriteLine($"Updated Reels: {string.Join(",", Reel_c)}");
+                Console.WriteLine($"Updated Reels: {string.Join(",", Reel_d)}");
+                Console.WriteLine($"Updated Reels: {string.Join(",", Reel_e)}");
+
+                if (HasRepeatedNumbers(currentResult))
+                {
+                    await Task.Delay(1000);
+                    var result = await dialogService.DisplayConfirm("3 identical Symbols found in one reel....Mini-Games are now enabled...",
+                    "Press OK to continue", "OK", " ");
+                    // if (result)
+                    // {
+                    //     NavManager.NavigateTo("/MiniGames");
+                    // }
+                }
+                spincount--;
+                currentIndex++;     
+                count = $"Spins: {spincount}/10";
+            }
+            else
+            {
+                var result = await dialogService.DisplayConfirm("Out of Spins...!", "Press OK to continue", "OK", " ");
+            }
+
+            StateHasChanged(); // Ensure the UI updates
+        }
+        loop = "";
+        isSpinning = false;
+    }
+
+    private async Task UpdateImage(string[] reel, int position, string image)
+    {
+        reel[position] = image;
+        await InvokeAsync(StateHasChanged); // Ensure the UI updates
+    }
+
+    private bool HasRepeatedNumbers(string[] array)
+    {
+        var counts = new Dictionary<string, int>();
+        foreach (var item in array)
+        {
+            if (counts.ContainsKey(item))
+            {
+                counts[item]++;
+            }
+            else
+            {
+                counts[item] = 1;
+            }
+            if (counts[item] == 3)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+
+
+@* private async Task Spin()
+{
+    if (isSpinning || currentIndex >= resultList.Count)
+    {
+        return;
+    }
+
+    isSpinning = true;
+    loop = "animation";
+
+    if (spincount > 0)
+    {
+        // Randomize the reels initially
+        RandomizeReels();
+
+        // Ensure the UI updates for the animation
+        StateHasChanged();
+        await Task.Delay(500); // Shorter delay to let animation play
+
+        string[] currentResult = resultList[currentIndex].Split(',');
+
+        // Update the reels based on current result
+        UpdateReels(currentResult);
+
+        // Debug statements to verify updates
+        DebugReels();
+
+        if (HasRepeatedNumbers(currentResult))
+        {
+            await Task.Delay(5000);
+            var result = await dialogService.DisplayConfirm("3 identical Symbols found in one reel....Mini-Games are now enabled...",
+                "Press OK to continue", "OK", " ");
+            // if (result)
+            // {
+            //     NavManager.NavigateTo("/MiniGames");
+            // }
+        }
+
+        currentIndex++;
+        spincount--;
+        count = $"Spins: {spincount}/100";
+
+        StateHasChanged(); // Ensure the UI updates
+    }
+    else
+    {
+        await dialogService.DisplayConfirm("Out of Spins...!", "Press OK to continue", "OK", " ");
+    }
+
+    loop = "";
+    isSpinning = false;
+}
+
+private void RandomizeReels()
+{
+    for (int i = 0; i < 11; i++)
+    {
+        Reel_a[i] = symbols[random.Next(symbols.Length)];
+        Reel_b[i] = symbols[random.Next(symbols.Length)];
+        Reel_c[i] = symbols[random.Next(symbols.Length)];
+        Reel_d[i] = symbols[random.Next(symbols.Length)];
+        Reel_e[i] = symbols[random.Next(symbols.Length)];
+    }
+}
+
+private void UpdateReels(string[] currentResult)
+{
+    Reel_a[1] = symbols[int.Parse(currentResult[0])];
+    Reel_b[1] = symbols[int.Parse(currentResult[1])];
+    Reel_c[1] = symbols[int.Parse(currentResult[2])];
+    Reel_d[1] = symbols[int.Parse(currentResult[3])];
+    Reel_e[1] = symbols[int.Parse(currentResult[4])];
+}
+
+private bool HasRepeatedNumbers(string[] array)
+{
+    var counts = new Dictionary<string, int>();
+    foreach (var item in array)
+    {
+        if (counts.ContainsKey(item))
+        {
+            counts[item]++;
+        }
+        else
+        {
+            counts[item] = 1;
+        }
+        if (counts[item] == 3)
+        {
+            return true;
+        }
+    }
+    return false;
+} *@
+
+

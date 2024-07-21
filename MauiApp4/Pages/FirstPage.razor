@@ -1,0 +1,13 @@
+﻿@page "/"
+@inject NavigationManager NavManager
+<img src="../Images/firstpage.png">
+<div class="position-absolute top-0 w-100" style="height: 100vh;">
+    <button class="btn-primary text-white position-absolute play-btn" @onclick="Play">Let's Play !</button>
+</div>
+
+@code {
+    private void Play()
+    {
+        NavManager.NavigateTo("/slotgame");
+    }
+}
