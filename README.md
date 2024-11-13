@@ -16,3 +16,7 @@ Technologies Used
 Blazor: Utilizing Blazor for creating interactive web UI components.
 C#: Core game logic and application development in C#.
 CSS: Custom styling for a polished and professional look.
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
+File named SlotMachine Demo.mp4 is the demo video of the game.
+
